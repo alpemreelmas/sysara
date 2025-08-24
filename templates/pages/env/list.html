@@ -1,0 +1,93 @@
+{{template "layouts/auth.html" .}}
+
+{{define "page_content"}}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="sm:flex sm:items-center">
+        <div class="sm:flex-auto">
+            <h1 class="text-xl font-semibold text-gray-900">Environment Files</h1>
+            <p class="mt-2 text-sm text-gray-700">Manage environment configuration files for different environments.</p>
+        </div>
+        <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
+            <form method="POST" action="/env/create" class="inline-flex">
+                <input type="text" name="filename" placeholder=".env.custom" required
+                       class="rounded-l-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                <button type="submit" class="inline-flex items-center justify-center rounded-r-md border border-l-0 border-indigo-600 bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                    <i class="fas fa-plus mr-2"></i>
+                    Create
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Environment Files Grid -->
+    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {{range .EnvFiles}}
+        <div class="bg-white overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow duration-200">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-file-alt text-gray-600"></i>
+                        </div>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Configuration File</dt>
+                            <dd class="text-lg font-medium text-gray-900">{{.}}</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-5 py-3">
+                <div class="text-sm">
+                    <a href="/env/edit/{{.}}" class="font-medium text-indigo-600 hover:text-indigo-500">
+                        <i class="fas fa-edit mr-1"></i>
+                        Edit file
+                        <span aria-hidden="true"> &rarr;</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {{else}}
+        <div class="col-span-full">
+            <div class="text-center py-12">
+                <i class="fas fa-file-alt text-4xl text-gray-400 mb-4"></i>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">No environment files</h3>
+                <p class="mt-1 text-sm text-gray-500">Get started by creating a new environment file.</p>
+                <div class="mt-6">
+                    <form method="POST" action="/env/create" class="inline-flex">
+                        <input type="text" name="filename" placeholder=".env" required
+                               class="rounded-l-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        <button type="submit" class="inline-flex items-center justify-center rounded-r-md border border-l-0 border-indigo-600 bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                            <i class="fas fa-plus mr-2"></i>
+                            Create first file
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {{end}}
+    </div>
+
+    <!-- Common Environment Files Info -->
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <i class="fas fa-info-circle text-blue-400"></i>
+            </div>
+            <div class="ml-3">
+                <h3 class="text-sm font-medium text-blue-800">Environment File Guidelines</h3>
+                <div class="mt-2 text-sm text-blue-700">
+                    <ul class="list-disc pl-5 space-y-1">
+                        <li><strong>.env</strong> - Default environment variables</li>
+                        <li><strong>.env.production</strong> - Production environment settings</li>
+                        <li><strong>.env.development</strong> - Development environment settings</li>
+                        <li><strong>.env.testing</strong> - Testing environment settings</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}

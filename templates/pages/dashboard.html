@@ -1,0 +1,220 @@
+{{template "layouts/auth.html" .}}
+
+{{define "page_content"}}
+<div class="space-y-6">
+    <!-- Welcome Section -->
+    <div class="bg-white overflow-hidden shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <div class="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-tachometer-alt text-indigo-600 text-xl"></i>
+                    </div>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">
+                        Welcome back, {{.CurrentUser.Name}}!
+                    </h3>
+                    <p class="mt-1 text-sm text-gray-500">
+                        Here's what's happening with your systems today.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <!-- Users Card -->
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-users text-blue-600"></i>
+                        </div>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Total Users</dt>
+                            <dd class="text-lg font-medium text-gray-900">{{.Stats.Users}}</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-5 py-3">
+                <div class="text-sm">
+                    <a href="/users" class="font-medium text-indigo-600 hover:text-indigo-500">
+                        Manage users
+                        <i class="fas fa-arrow-right ml-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- SSH Keys Card -->
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-key text-green-600"></i>
+                        </div>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">SSH Keys</dt>
+                            <dd class="text-lg font-medium text-gray-900">{{.Stats.SSHKeys}}</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-5 py-3">
+                <div class="text-sm">
+                    <a href="/ssh" class="font-medium text-indigo-600 hover:text-indigo-500">
+                        Manage keys
+                        <i class="fas fa-arrow-right ml-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Servers Card -->
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-server text-purple-600"></i>
+                        </div>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Servers</dt>
+                            <dd class="text-lg font-medium text-gray-900">{{.Stats.Servers}}</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-5 py-3">
+                <div class="text-sm">
+                    <a href="/monitor" class="font-medium text-indigo-600 hover:text-indigo-500">
+                        View monitoring
+                        <i class="fas fa-arrow-right ml-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Environment Card -->
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                            <i class="fas fa-cog text-yellow-600"></i>
+                        </div>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Environment</dt>
+                            <dd class="text-lg font-medium text-gray-900">Config</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-5 py-3">
+                <div class="text-sm">
+                    <a href="/env" class="font-medium text-indigo-600 hover:text-indigo-500">
+                        Manage config
+                        <i class="fas fa-arrow-right ml-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="bg-white shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Quick Actions</h3>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <a href="/users/create" class="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-500 rounded-lg border border-gray-300 hover:border-indigo-500 hover:shadow-md transition-all duration-200">
+                    <div>
+                        <span class="rounded-lg inline-flex p-3 bg-indigo-50 text-indigo-600 ring-4 ring-white">
+                            <i class="fas fa-user-plus"></i>
+                        </span>
+                    </div>
+                    <div class="mt-4">
+                        <h3 class="text-lg font-medium text-gray-900">Add User</h3>
+                        <p class="mt-2 text-sm text-gray-500">Create a new user account</p>
+                    </div>
+                </a>
+
+                <a href="/ssh/create" class="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-500 rounded-lg border border-gray-300 hover:border-indigo-500 hover:shadow-md transition-all duration-200">
+                    <div>
+                        <span class="rounded-lg inline-flex p-3 bg-green-50 text-green-600 ring-4 ring-white">
+                            <i class="fas fa-key"></i>
+                        </span>
+                    </div>
+                    <div class="mt-4">
+                        <h3 class="text-lg font-medium text-gray-900">Add SSH Key</h3>
+                        <p class="mt-2 text-sm text-gray-500">Upload a new SSH public key</p>
+                    </div>
+                </a>
+
+                <a href="/env" class="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-500 rounded-lg border border-gray-300 hover:border-indigo-500 hover:shadow-md transition-all duration-200">
+                    <div>
+                        <span class="rounded-lg inline-flex p-3 bg-yellow-50 text-yellow-600 ring-4 ring-white">
+                            <i class="fas fa-edit"></i>
+                        </span>
+                    </div>
+                    <div class="mt-4">
+                        <h3 class="text-lg font-medium text-gray-900">Edit Config</h3>
+                        <p class="mt-2 text-sm text-gray-500">Manage environment files</p>
+                    </div>
+                </a>
+
+                <a href="/monitor" class="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-500 rounded-lg border border-gray-300 hover:border-indigo-500 hover:shadow-md transition-all duration-200">
+                    <div>
+                        <span class="rounded-lg inline-flex p-3 bg-purple-50 text-purple-600 ring-4 ring-white">
+                            <i class="fas fa-chart-line"></i>
+                        </span>
+                    </div>
+                    <div class="mt-4">
+                        <h3 class="text-lg font-medium text-gray-900">System Monitor</h3>
+                        <p class="mt-2 text-sm text-gray-500">View system metrics</p>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="bg-white shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">System Status</h3>
+            <div class="space-y-3">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-2 h-2 bg-green-400 rounded-full"></div>
+                    </div>
+                    <p class="ml-3 text-sm text-gray-600">All systems operational</p>
+                </div>
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-2 h-2 bg-green-400 rounded-full"></div>
+                    </div>
+                    <p class="ml-3 text-sm text-gray-600">Database connection healthy</p>
+                </div>
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-2 h-2 bg-green-400 rounded-full"></div>
+                    </div>
+                    <p class="ml-3 text-sm text-gray-600">Web server running normally</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}
