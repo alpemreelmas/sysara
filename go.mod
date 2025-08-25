@@ -3,10 +3,11 @@ module github.com/alpemreelmas/sysara
 go 1.24.3
 
 require (
+	github.com/a-h/templ v0.3.943
 	github.com/gin-gonic/gin v1.10.0
 	github.com/gorilla/sessions v1.2.2
 	github.com/shirou/gopsutil/v3 v3.23.12
-	golang.org/x/crypto v0.23.0
+	golang.org/x/crypto v0.40.0
 	gorm.io/driver/sqlite v1.5.4
 	gorm.io/gorm v1.25.5
 )
@@ -43,9 +44,9 @@ require (
 	github.com/ugorji/go/codec v1.2.12 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 	golang.org/x/arch v0.8.0 // indirect
-	golang.org/x/net v0.25.0 // indirect
-	golang.org/x/sys v0.20.0 // indirect
-	golang.org/x/text v0.15.0 // indirect
+	golang.org/x/net v0.42.0 // indirect
+	golang.org/x/sys v0.34.0 // indirect
+	golang.org/x/text v0.27.0 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

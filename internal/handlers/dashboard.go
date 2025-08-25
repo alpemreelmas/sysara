@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/alpemreelmas/sysara/internal/models"
+	templ "github.com/alpemreelmas/sysara/templ"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -21,6 +22,11 @@ func NewDashboardHandler(db *gorm.DB) *DashboardHandler {
 // ShowDashboard displays the main dashboard
 func (h *DashboardHandler) ShowDashboard(c *gin.Context) {
 	currentUser, _ := c.Get("current_user")
+	userModel, ok := currentUser.(*models.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get current user"})
+		return
+	}
 
 	// Get some basic statistics
 	var userCount, sshKeyCount, serverCount int64
@@ -28,13 +34,19 @@ func (h *DashboardHandler) ShowDashboard(c *gin.Context) {
 	h.db.Model(&models.SSHKey{}).Count(&sshKeyCount)
 	h.db.Model(&models.Server{}).Count(&serverCount)
 
-	c.HTML(http.StatusOK, "dashboard.html", gin.H{
-		"Title":       "Dashboard - Sysara",
-		"CurrentUser": currentUser,
-		"Stats": gin.H{
-			"Users":   userCount,
-			"SSHKeys": sshKeyCount,
-			"Servers": serverCount,
+	data := templ.DashboardData{
+		AuthData: templ.AuthData{
+			Title:       "Dashboard - Sysara",
+			PageTitle:   "Dashboard",
+			CurrentUser: *userModel,
 		},
-	})
+		Stats: templ.DashboardStats{
+			Users:   int(userCount),
+			SSHKeys: int(sshKeyCount),
+			Servers: int(serverCount),
+		},
+	}
+	c.Header("Content-Type", "text/html")
+	c.Status(http.StatusOK)
+	templ.Dashboard(data).Render(c.Request.Context(), c.Writer)
 }

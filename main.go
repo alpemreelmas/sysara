@@ -37,10 +37,9 @@ func main() {
 	// Initialize Gin router
 	r := gin.Default()
 
-	// Load HTML templates
 	// Serve static files
 	r.Static("/static", "./static")
-	r.LoadHTMLGlob("templates/**/*.html")
+	// Note: No longer loading HTML templates - using templ instead
 	// Middleware
 	r.Use(middleware.SessionMiddleware(store))
 	r.Use(middleware.CORSMiddleware())

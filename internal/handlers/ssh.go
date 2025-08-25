@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/alpemreelmas/sysara/internal/models"
+	templ "github.com/alpemreelmas/sysara/templ"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -25,32 +26,60 @@ func NewSSHHandler(db *gorm.DB) *SSHHandler {
 // ListKeys displays all SSH keys
 func (h *SSHHandler) ListKeys(c *gin.Context) {
 	currentUser, _ := c.Get("current_user")
-
-	var sshKeys []models.SSHKey
-	if err := h.db.Preload("User").Find(&sshKeys).Error; err != nil {
-		c.HTML(http.StatusInternalServerError, "pages/ssh/list.html", gin.H{
-			"Title":       "SSH Keys - Sysara",
-			"CurrentUser": currentUser,
-			"Error":       "Failed to fetch SSH keys",
-		})
+	userModel, ok := currentUser.(*models.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get current user"})
 		return
 	}
 
-	c.HTML(http.StatusOK, "pages/ssh/list.html", gin.H{
-		"Title":       "SSH Keys - Sysara",
-		"CurrentUser": currentUser,
-		"SSHKeys":     sshKeys,
-	})
+	var sshKeys []models.SSHKey
+	if err := h.db.Preload("User").Find(&sshKeys).Error; err != nil {
+		data := templ.SSHListData{
+			AuthData: templ.AuthData{
+				Title:       "SSH Keys - Sysara",
+				PageTitle:   "SSH Keys",
+				CurrentUser: *userModel,
+			},
+			Error: "Failed to fetch SSH keys",
+		}
+		c.Header("Content-Type", "text/html")
+		c.Status(http.StatusInternalServerError)
+		templ.SSHList(data).Render(c.Request.Context(), c.Writer)
+		return
+	}
+
+	data := templ.SSHListData{
+		AuthData: templ.AuthData{
+			Title:       "SSH Keys - Sysara",
+			PageTitle:   "SSH Keys",
+			CurrentUser: *userModel,
+		},
+		SSHKeys: sshKeys,
+	}
+	c.Header("Content-Type", "text/html")
+	c.Status(http.StatusOK)
+	templ.SSHList(data).Render(c.Request.Context(), c.Writer)
 }
 
 // ShowCreateKey displays the create SSH key form
 func (h *SSHHandler) ShowCreateKey(c *gin.Context) {
 	currentUser, _ := c.Get("current_user")
+	userModel, ok := currentUser.(*models.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get current user"})
+		return
+	}
 
-	c.HTML(http.StatusOK, "pages/ssh/create.html", gin.H{
-		"Title":       "Add SSH Key - Sysara",
-		"CurrentUser": currentUser,
-	})
+	data := templ.SSHCreateData{
+		AuthData: templ.AuthData{
+			Title:       "Add SSH Key - Sysara",
+			PageTitle:   "Add SSH Key",
+			CurrentUser: *userModel,
+		},
+	}
+	c.Header("Content-Type", "text/html")
+	c.Status(http.StatusOK)
+	templ.SSHCreate(data).Render(c.Request.Context(), c.Writer)
 }
 
 // CreateKey handles SSH key creation
@@ -61,24 +90,36 @@ func (h *SSHHandler) CreateKey(c *gin.Context) {
 
 	user, ok := currentUser.(*models.User)
 	if !ok {
-		c.HTML(http.StatusInternalServerError, "pages/ssh/create.html", gin.H{
-			"Title":       "Add SSH Key - Sysara",
-			"CurrentUser": currentUser,
-			"Error":       "Failed to get current user",
-		})
+		data := templ.SSHCreateData{
+			AuthData: templ.AuthData{
+				Title:       "Add SSH Key - Sysara",
+				PageTitle:   "Add SSH Key",
+				CurrentUser: models.User{}, // Empty user as fallback
+			},
+			Error: "Failed to get current user",
+		}
+		c.Header("Content-Type", "text/html")
+		c.Status(http.StatusInternalServerError)
+		templ.SSHCreate(data).Render(c.Request.Context(), c.Writer)
 		return
 	}
 
 	// Validate public key format
 	publicKey = strings.TrimSpace(publicKey)
 	if !isValidSSHPublicKey(publicKey) {
-		c.HTML(http.StatusBadRequest, "pages/ssh/create.html", gin.H{
-			"Title":       "Add SSH Key - Sysara",
-			"CurrentUser": currentUser,
-			"Error":       "Invalid SSH public key format",
-			"Name":        name,
-			"PublicKey":   publicKey,
-		})
+		data := templ.SSHCreateData{
+			AuthData: templ.AuthData{
+				Title:       "Add SSH Key - Sysara",
+				PageTitle:   "Add SSH Key",
+				CurrentUser: *user,
+			},
+			Name:      name,
+			PublicKey: publicKey,
+			Error:     "Invalid SSH public key format",
+		}
+		c.Header("Content-Type", "text/html")
+		c.Status(http.StatusBadRequest)
+		templ.SSHCreate(data).Render(c.Request.Context(), c.Writer)
 		return
 	}
 
@@ -88,13 +129,19 @@ func (h *SSHHandler) CreateKey(c *gin.Context) {
 	// Check if key already exists
 	var existingKey models.SSHKey
 	if err := h.db.Where("fingerprint = ?", fingerprint).First(&existingKey).Error; err == nil {
-		c.HTML(http.StatusBadRequest, "pages/ssh/create.html", gin.H{
-			"Title":       "Add SSH Key - Sysara",
-			"CurrentUser": currentUser,
-			"Error":       "SSH key already exists",
-			"Name":        name,
-			"PublicKey":   publicKey,
-		})
+		data := templ.SSHCreateData{
+			AuthData: templ.AuthData{
+				Title:       "Add SSH Key - Sysara",
+				PageTitle:   "Add SSH Key",
+				CurrentUser: *user,
+			},
+			Name:      name,
+			PublicKey: publicKey,
+			Error:     "SSH key already exists",
+		}
+		c.Header("Content-Type", "text/html")
+		c.Status(http.StatusBadRequest)
+		templ.SSHCreate(data).Render(c.Request.Context(), c.Writer)
 		return
 	}
 
@@ -107,13 +154,19 @@ func (h *SSHHandler) CreateKey(c *gin.Context) {
 	}
 
 	if err := h.db.Create(&sshKey).Error; err != nil {
-		c.HTML(http.StatusInternalServerError, "pages/ssh/create.html", gin.H{
-			"Title":       "Add SSH Key - Sysara",
-			"CurrentUser": currentUser,
-			"Error":       "Failed to save SSH key",
-			"Name":        name,
-			"PublicKey":   publicKey,
-		})
+		data := templ.SSHCreateData{
+			AuthData: templ.AuthData{
+				Title:       "Add SSH Key - Sysara",
+				PageTitle:   "Add SSH Key",
+				CurrentUser: *user,
+			},
+			Name:      name,
+			PublicKey: publicKey,
+			Error:     "Failed to save SSH key",
+		}
+		c.Header("Content-Type", "text/html")
+		c.Status(http.StatusInternalServerError)
+		templ.SSHCreate(data).Render(c.Request.Context(), c.Writer)
 		return
 	}
 
@@ -164,7 +217,7 @@ func isValidSSHPublicKey(key string) bool {
 
 	keyType := parts[0]
 	validTypes := []string{"ssh-rsa", "ssh-dss", "ssh-ed25519", "ecdsa-sha2-nistp256", "ecdsa-sha2-nistp384", "ecdsa-sha2-nistp521"}
-	
+
 	for _, validType := range validTypes {
 		if keyType == validType {
 			return true

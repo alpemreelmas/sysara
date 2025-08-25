@@ -1,0 +1,265 @@
+package templ
+
+import (
+	"strconv"
+	"github.com/alpemreelmas/sysara/internal/models"
+)
+
+type SSHListData struct {
+	AuthData
+	SSHKeys []models.SSHKey
+	Error   string
+}
+
+type SSHCreateData struct {
+	AuthData
+	Name      string
+	PublicKey string
+	Error     string
+}
+
+templ SSHList(data SSHListData) {
+	@Auth(data.AuthData) {
+		<div class="space-y-6">
+			<!-- Header -->
+			<div class="sm:flex sm:items-center">
+				<div class="sm:flex-auto">
+					<h1 class="text-xl font-semibold text-gray-900">SSH Keys</h1>
+					<p class="mt-2 text-sm text-gray-700">Manage SSH public keys for server access.</p>
+				</div>
+				<div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
+					<a href="/ssh/create" class="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:w-auto">
+						<i class="fas fa-plus mr-2"></i>
+						Add SSH Key
+					</a>
+				</div>
+			</div>
+
+			if data.Error != "" {
+				<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+					<span class="block sm:inline">{ data.Error }</span>
+				</div>
+			}
+
+			<!-- SSH Keys List -->
+			<div class="bg-white shadow overflow-hidden sm:rounded-md">
+				<ul class="divide-y divide-gray-200">
+					if len(data.SSHKeys) > 0 {
+						for _, key := range data.SSHKeys {
+							<li>
+								<div class="px-4 py-4">
+									<div class="flex items-center justify-between">
+										<div class="flex items-center">
+											<div class="flex-shrink-0 h-10 w-10">
+												<div class="h-10 w-10 rounded-lg bg-green-100 flex items-center justify-center">
+													<i class="fas fa-key text-green-600"></i>
+												</div>
+											</div>
+											<div class="ml-4 flex-1">
+												<div class="flex items-center justify-between">
+													<p class="text-sm font-medium text-gray-900">{ key.Name }</p>
+													<div class="ml-2 flex-shrink-0 flex">
+														<p class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+															Active
+														</p>
+													</div>
+												</div>
+												<div class="mt-1">
+													<p class="text-sm text-gray-600">
+														<span class="font-medium">Owner:</span> { key.User.Name } ({ key.User.Email })
+													</p>
+													<p class="text-sm text-gray-500 font-mono">
+														<span class="font-medium">Fingerprint:</span> { key.Fingerprint }
+													</p>
+													<p class="text-xs text-gray-400">
+														Added { key.CreatedAt.Format("Jan 2, 2006") }
+													</p>
+												</div>
+											</div>
+										</div>
+										<div class="flex-shrink-0">
+											if key.UserID == data.CurrentUser.ID {
+												<form method="POST" action={ "/ssh/" + strconv.Itoa(int(key.ID)) + "/delete" } class="inline" onsubmit="return confirm('Are you sure you want to delete this SSH key?')">
+													<button type="submit" class="inline-flex items-center px-3 py-1.5 border border-red-300 shadow-sm text-xs font-medium rounded text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+														<i class="fas fa-trash mr-1"></i>
+														Delete
+													</button>
+												</form>
+											}
+										</div>
+									</div>
+									
+									<!-- Key Preview -->
+									<div class="mt-3" x-data="{ showKey: false }">
+										<button @click="showKey = !showKey" class="text-xs text-indigo-600 hover:text-indigo-500">
+											<span x-show="!showKey">Show public key</span>
+											<span x-show="showKey">Hide public key</span>
+										</button>
+										<div x-show="showKey" x-transition class="mt-2 p-3 bg-gray-50 rounded-lg">
+											<pre class="text-xs text-gray-700 whitespace-pre-wrap break-all">{ key.PublicKey }</pre>
+										</div>
+									</div>
+								</div>
+							</li>
+						}
+					} else {
+						<li class="px-4 py-8 text-center">
+							<div class="text-sm text-gray-500">
+								<i class="fas fa-key text-4xl text-gray-400 mb-4"></i>
+								<p class="text-lg font-medium text-gray-900 mb-2">No SSH keys found</p>
+								<p>Add your first SSH public key to get started with server access.</p>
+								<div class="mt-6">
+									<a href="/ssh/create" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+										<i class="fas fa-plus mr-2"></i>
+										Add SSH Key
+									</a>
+								</div>
+							</div>
+						</li>
+					}
+				</ul>
+			</div>
+
+			<!-- Help Section -->
+			<div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+				<div class="flex">
+					<div class="flex-shrink-0">
+						<i class="fas fa-info-circle text-blue-400"></i>
+					</div>
+					<div class="ml-3">
+						<h3 class="text-sm font-medium text-blue-800">SSH Key Guidelines</h3>
+						<div class="mt-2 text-sm text-blue-700">
+							<p class="mb-2">To generate a new SSH key pair:</p>
+							<pre class="bg-blue-100 p-2 rounded text-xs">ssh-keygen -t ed25519 -C "your_email@example.com"</pre>
+							<p class="mt-2">Then copy the public key (usually in ~/.ssh/id_ed25519.pub) and paste it here.</p>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	}
+}
+
+templ SSHCreate(data SSHCreateData) {
+	@Auth(data.AuthData) {
+		<div class="space-y-6">
+			<!-- Header -->
+			<div>
+				<nav class="flex" aria-label="Breadcrumb">
+					<ol class="flex items-center space-x-4">
+						<li>
+							<a href="/ssh" class="text-gray-400 hover:text-gray-500">
+								<i class="fas fa-key"></i>
+								<span class="sr-only">SSH Keys</span>
+							</a>
+						</li>
+						<li>
+							<div class="flex items-center">
+								<i class="fas fa-chevron-right text-gray-400 mr-4"></i>
+								<span class="text-sm font-medium text-gray-900">Add SSH Key</span>
+							</div>
+						</li>
+					</ol>
+				</nav>
+				<div class="mt-4">
+					<h1 class="text-xl font-semibold text-gray-900">Add SSH Key</h1>
+					<p class="mt-1 text-sm text-gray-600">Add a new SSH public key for server access.</p>
+				</div>
+			</div>
+
+			<!-- Form -->
+			<div class="bg-white shadow sm:rounded-lg">
+				<div class="px-4 py-5 sm:p-6">
+					if data.Error != "" {
+						<div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+							<span class="block sm:inline">{ data.Error }</span>
+						</div>
+					}
+
+					<form method="POST" action="/ssh/create" class="space-y-6">
+						<div>
+							<label for="name" class="block text-sm font-medium text-gray-700">
+								Key Name
+							</label>
+							<div class="mt-1">
+								<input type="text" name="name" id="name" value={ data.Name } required placeholder="e.g., Personal Laptop, Work Computer" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"/>
+							</div>
+							<p class="mt-1 text-sm text-gray-500">Give your SSH key a descriptive name to identify it later.</p>
+						</div>
+
+						<div>
+							<label for="public_key" class="block text-sm font-medium text-gray-700">
+								SSH Public Key
+							</label>
+							<div class="mt-1">
+								<textarea name="public_key" id="public_key" rows="6" required placeholder="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGz7QQz... user@example.com" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md font-mono">{ data.PublicKey }</textarea>
+							</div>
+							<p class="mt-1 text-sm text-gray-500">Paste your SSH public key here. It should start with ssh-rsa, ssh-ed25519, or similar.</p>
+						</div>
+
+						<div class="flex justify-end space-x-3">
+							<a href="/ssh" class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+								Cancel
+							</a>
+							<button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+								<i class="fas fa-plus mr-2"></i>
+								Add SSH Key
+							</button>
+						</div>
+					</form>
+				</div>
+			</div>
+
+			<!-- Instructions -->
+			<div class="bg-gray-50 rounded-lg p-6">
+				<h3 class="text-lg font-medium text-gray-900 mb-4">How to Generate SSH Keys</h3>
+				<div class="space-y-4">
+					<div>
+						<h4 class="text-sm font-medium text-gray-700">1. Generate a new SSH key pair</h4>
+						<pre class="mt-1 bg-gray-100 p-3 rounded text-sm">ssh-keygen -t ed25519 -C "your_email@example.com"</pre>
+						<p class="mt-1 text-sm text-gray-600">Follow the prompts and optionally set a passphrase for added security.</p>
+					</div>
+					
+					<div>
+						<h4 class="text-sm font-medium text-gray-700">2. Copy your public key</h4>
+						<p class="mt-1 text-sm text-gray-600">Copy the contents of your public key file:</p>
+						<div class="mt-2 space-y-2">
+							<div>
+								<span class="text-xs font-medium text-gray-500">Linux/Mac:</span>
+								<pre class="mt-1 bg-gray-100 p-2 rounded text-xs">cat ~/.ssh/id_ed25519.pub</pre>
+							</div>
+							<div>
+								<span class="text-xs font-medium text-gray-500">Windows (Git Bash):</span>
+								<pre class="mt-1 bg-gray-100 p-2 rounded text-xs">cat ~/.ssh/id_ed25519.pub</pre>
+							</div>
+							<div>
+								<span class="text-xs font-medium text-gray-500">Windows (PowerShell):</span>
+								<pre class="mt-1 bg-gray-100 p-2 rounded text-xs">Get-Content $env:USERPROFILE\.ssh\id_ed25519.pub</pre>
+							</div>
+						</div>
+					</div>
+					
+					<div>
+						<h4 class="text-sm font-medium text-gray-700">3. Paste the public key above</h4>
+						<p class="mt-1 text-sm text-gray-600">Copy the entire output and paste it into the SSH Public Key field above.</p>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<script>
+			// Validate SSH key format
+			document.getElementById('public_key').addEventListener('input', function() {
+				const key = this.value.trim();
+				const validTypes = ['ssh-rsa', 'ssh-dss', 'ssh-ed25519', 'ecdsa-sha2-nistp256', 'ecdsa-sha2-nistp384', 'ecdsa-sha2-nistp521'];
+				const isValid = validTypes.some(type => key.startsWith(type));
+				
+				if (key && !isValid) {
+					this.setCustomValidity('Please enter a valid SSH public key');
+				} else {
+					this.setCustomValidity('');
+				}
+			});
+		</script>
+	}
+}

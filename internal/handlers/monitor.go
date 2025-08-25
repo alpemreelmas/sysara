@@ -5,6 +5,8 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/alpemreelmas/sysara/internal/models"
+	templ "github.com/alpemreelmas/sysara/templ"
 	"github.com/gin-gonic/gin"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
@@ -22,67 +24,25 @@ func NewMonitorHandler() *MonitorHandler {
 	return &MonitorHandler{}
 }
 
-// SystemStats represents system statistics
-type SystemStats struct {
-	CPU     CPUStats     `json:"cpu"`
-	Memory  MemoryStats  `json:"memory"`
-	Disk    DiskStats    `json:"disk"`
-	Network NetworkStats `json:"network"`
-	Host    HostStats    `json:"host"`
-}
-
-type CPUStats struct {
-	Usage     float64 `json:"usage"`
-	Cores     int     `json:"cores"`
-	ModelName string  `json:"model_name"`
-}
-
-type MemoryStats struct {
-	Total       uint64  `json:"total"`
-	Available   uint64  `json:"available"`
-	Used        uint64  `json:"used"`
-	UsedPercent float64 `json:"used_percent"`
-}
-
-type DiskStats struct {
-	Total       uint64  `json:"total"`
-	Free        uint64  `json:"free"`
-	Used        uint64  `json:"used"`
-	UsedPercent float64 `json:"used_percent"`
-}
-
-type NetworkStats struct {
-	BytesSent   uint64 `json:"bytes_sent"`
-	BytesRecv   uint64 `json:"bytes_recv"`
-	PacketsSent uint64 `json:"packets_sent"`
-	PacketsRecv uint64 `json:"packets_recv"`
-}
-
-type HostStats struct {
-	Hostname        string `json:"hostname"`
-	Uptime          uint64 `json:"uptime"`
-	OS              string `json:"os"`
-	Platform        string `json:"platform"`
-	PlatformVersion string `json:"platform_version"`
-	KernelVersion   string `json:"kernel_version"`
-}
-
-type ProcessInfo struct {
-	PID        int32   `json:"pid"`
-	Name       string  `json:"name"`
-	CPUPercent float64 `json:"cpu_percent"`
-	Memory     uint64  `json:"memory"`
-	Status     string  `json:"status"`
-}
-
 // ShowMonitor displays the system monitoring dashboard
 func (h *MonitorHandler) ShowMonitor(c *gin.Context) {
 	currentUser, _ := c.Get("current_user")
+	userModel, ok := currentUser.(*models.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get current user"})
+		return
+	}
 
-	c.HTML(http.StatusOK, "pages/monitor/dashboard.html", gin.H{
-		"Title":       "System Monitor - Sysara",
-		"CurrentUser": currentUser,
-	})
+	data := templ.MonitorData{
+		AuthData: templ.AuthData{
+			Title:       "System Monitor - Sysara",
+			PageTitle:   "System Monitor",
+			CurrentUser: *userModel,
+		},
+	}
+	c.Header("Content-Type", "text/html")
+	c.Status(http.StatusOK)
+	templ.Monitor(data).Render(c.Request.Context(), c.Writer)
 }
 
 // GetSystemStats returns current system statistics (HTMX endpoint)
@@ -95,9 +55,12 @@ func (h *MonitorHandler) GetSystemStats(c *gin.Context) {
 
 	// For HTMX requests, return HTML partial
 	if c.GetHeader("HX-Request") == "true" {
-		c.HTML(http.StatusOK, "partials/system-stats.html", gin.H{
-			"Stats": stats,
-		})
+		statsData := templ.SystemStatsData{
+			Stats: *stats,
+		}
+		c.Header("Content-Type", "text/html")
+		c.Status(http.StatusOK)
+		templ.SystemStatsPartial(statsData).Render(c.Request.Context(), c.Writer)
 		return
 	}
 
@@ -114,9 +77,12 @@ func (h *MonitorHandler) GetProcesses(c *gin.Context) {
 
 	// For HTMX requests, return HTML partial
 	if c.GetHeader("HX-Request") == "true" {
-		c.HTML(http.StatusOK, "partials/process-list.html", gin.H{
-			"Processes": processes,
-		})
+		processData := templ.ProcessListData{
+			Processes: processes,
+		}
+		c.Header("Content-Type", "text/html")
+		c.Status(http.StatusOK)
+		templ.ProcessListPartial(processData).Render(c.Request.Context(), c.Writer)
 		return
 	}
 
@@ -124,8 +90,8 @@ func (h *MonitorHandler) GetProcesses(c *gin.Context) {
 }
 
 // collectSystemStats gathers system statistics
-func (h *MonitorHandler) collectSystemStats() (*SystemStats, error) {
-	stats := &SystemStats{}
+func (h *MonitorHandler) collectSystemStats() (*templ.SystemStats, error) {
+	stats := &templ.SystemStats{}
 
 	// CPU stats
 	cpuPercent, err := cpu.Percent(time.Second, false)
@@ -181,13 +147,13 @@ func (h *MonitorHandler) collectSystemStats() (*SystemStats, error) {
 }
 
 // collectProcessInfo gathers information about running processes
-func (h *MonitorHandler) collectProcessInfo() ([]ProcessInfo, error) {
+func (h *MonitorHandler) collectProcessInfo() ([]templ.ProcessInfo, error) {
 	pids, err := process.Pids()
 	if err != nil {
 		return nil, err
 	}
 
-	var processes []ProcessInfo
+	var processes []templ.ProcessInfo
 	maxProcesses := 20 // Limit to top 20 processes
 
 	for i, pid := range pids {
@@ -226,7 +192,7 @@ func (h *MonitorHandler) collectProcessInfo() ([]ProcessInfo, error) {
 			statusStr = status[0]
 		}
 
-		processes = append(processes, ProcessInfo{
+		processes = append(processes, templ.ProcessInfo{
 			PID:        pid,
 			Name:       name,
 			CPUPercent: cpuPercent,

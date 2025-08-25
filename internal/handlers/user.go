@@ -6,6 +6,7 @@ import (
 
 	"github.com/alpemreelmas/sysara/internal/auth"
 	"github.com/alpemreelmas/sysara/internal/models"
+	templ "github.com/alpemreelmas/sysara/templ"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -32,9 +33,12 @@ func (h *UserHandler) ShowLogin(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "login.html", gin.H{
-		"Title": "Login - Sysara",
-	})
+	data := templ.LoginData{
+		Title: "Login - Sysara",
+	}
+	c.Header("Content-Type", "text/html")
+	c.Status(http.StatusOK)
+	templ.Login(data).Render(c.Request.Context(), c.Writer)
 }
 
 // Login handles user login
@@ -44,20 +48,26 @@ func (h *UserHandler) Login(c *gin.Context) {
 
 	user, err := h.authService.AuthenticateUser(email, password)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "login.html", gin.H{
-			"Title": "Login - Sysara",
-			"Error": err.Error(),
-			"Email": email,
-		})
+		data := templ.LoginData{
+			Title: "Login - Sysara",
+			Error: err.Error(),
+			Email: email,
+		}
+		c.Header("Content-Type", "text/html")
+		c.Status(http.StatusBadRequest)
+		templ.Login(data).Render(c.Request.Context(), c.Writer)
 		return
 	}
 
 	if err := h.authService.Login(c, user); err != nil {
-		c.HTML(http.StatusInternalServerError, "login.html", gin.H{
-			"Title": "Login - Sysara",
-			"Error": "Failed to create session",
-			"Email": email,
-		})
+		data := templ.LoginData{
+			Title: "Login - Sysara",
+			Error: "Failed to create session",
+			Email: email,
+		}
+		c.Header("Content-Type", "text/html")
+		c.Status(http.StatusInternalServerError)
+		templ.Login(data).Render(c.Request.Context(), c.Writer)
 		return
 	}
 
@@ -72,9 +82,12 @@ func (h *UserHandler) ShowRegister(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "register.html", gin.H{
-		"Title": "Register - Sysara",
-	})
+	data := templ.RegisterData{
+		Title: "Register - Sysara",
+	}
+	c.Header("Content-Type", "text/html")
+	c.Status(http.StatusOK)
+	templ.Register(data).Render(c.Request.Context(), c.Writer)
 }
 
 // Register handles user registration
@@ -86,34 +99,43 @@ func (h *UserHandler) Register(c *gin.Context) {
 
 	// Validate passwords match
 	if password != confirmPassword {
-		c.HTML(http.StatusBadRequest, "register.html", gin.H{
-			"Title": "Register - Sysara",
-			"Error": "Passwords do not match",
-			"Email": email,
-			"Name":  name,
-		})
+		data := templ.RegisterData{
+			Title: "Register - Sysara",
+			Error: "Passwords do not match",
+			Email: email,
+			Name:  name,
+		}
+		c.Header("Content-Type", "text/html")
+		c.Status(http.StatusBadRequest)
+		templ.Register(data).Render(c.Request.Context(), c.Writer)
 		return
 	}
 
 	// Validate password length
 	if len(password) < 6 {
-		c.HTML(http.StatusBadRequest, "register.html", gin.H{
-			"Title": "Register - Sysara",
-			"Error": "Password must be at least 6 characters long",
-			"Email": email,
-			"Name":  name,
-		})
+		data := templ.RegisterData{
+			Title: "Register - Sysara",
+			Error: "Password must be at least 6 characters long",
+			Email: email,
+			Name:  name,
+		}
+		c.Header("Content-Type", "text/html")
+		c.Status(http.StatusBadRequest)
+		templ.Register(data).Render(c.Request.Context(), c.Writer)
 		return
 	}
 
 	user, err := h.authService.RegisterUser(email, name, password)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "register.html", gin.H{
-			"Title": "Register - Sysara",
-			"Error": err.Error(),
-			"Email": email,
-			"Name":  name,
-		})
+		data := templ.RegisterData{
+			Title: "Register - Sysara",
+			Error: err.Error(),
+			Email: email,
+			Name:  name,
+		}
+		c.Header("Content-Type", "text/html")
+		c.Status(http.StatusBadRequest)
+		templ.Register(data).Render(c.Request.Context(), c.Writer)
 		return
 	}
 
@@ -139,30 +161,67 @@ func (h *UserHandler) Logout(c *gin.Context) {
 func (h *UserHandler) ListUsers(c *gin.Context) {
 	var users []models.User
 	if err := h.db.Find(&users).Error; err != nil {
-		c.HTML(http.StatusInternalServerError, "pages/users/list.html", gin.H{
-			"Title": "Users - Sysara",
-			"Error": "Failed to fetch users",
-		})
+		currentUser, _ := c.Get("current_user")
+		userModel, ok := currentUser.(*models.User)
+		if !ok {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get current user"})
+			return
+		}
+
+		data := templ.UserListData{
+			AuthData: templ.AuthData{
+				Title:       "Users - Sysara",
+				PageTitle:   "Users",
+				CurrentUser: *userModel,
+			},
+			Users: users,
+			Error: "Failed to fetch users",
+		}
+		c.Header("Content-Type", "text/html")
+		c.Status(http.StatusInternalServerError)
+		templ.UserList(data).Render(c.Request.Context(), c.Writer)
 		return
 	}
 
 	currentUser, _ := c.Get("current_user")
+	userModel, ok := currentUser.(*models.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get current user"})
+		return
+	}
 
-	c.HTML(http.StatusOK, "pages/users/list.html", gin.H{
-		"Title":       "Users - Sysara",
-		"Users":       users,
-		"CurrentUser": currentUser,
-	})
+	data := templ.UserListData{
+		AuthData: templ.AuthData{
+			Title:       "Users - Sysara",
+			PageTitle:   "Users",
+			CurrentUser: *userModel,
+		},
+		Users: users,
+	}
+	c.Header("Content-Type", "text/html")
+	c.Status(http.StatusOK)
+	templ.UserList(data).Render(c.Request.Context(), c.Writer)
 }
 
 // ShowCreateUser displays the create user form
 func (h *UserHandler) ShowCreateUser(c *gin.Context) {
 	currentUser, _ := c.Get("current_user")
+	userModel, ok := currentUser.(*models.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get current user"})
+		return
+	}
 
-	c.HTML(http.StatusOK, "pages/users/create.html", gin.H{
-		"Title":       "Create User - Sysara",
-		"CurrentUser": currentUser,
-	})
+	data := templ.UserCreateData{
+		AuthData: templ.AuthData{
+			Title:       "Create User - Sysara",
+			PageTitle:   "Create User",
+			CurrentUser: *userModel,
+		},
+	}
+	c.Header("Content-Type", "text/html")
+	c.Status(http.StatusOK)
+	templ.UserCreate(data).Render(c.Request.Context(), c.Writer)
 }
 
 // CreateUser handles user creation
@@ -172,28 +231,45 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 	password := c.PostForm("password")
 
 	currentUser, _ := c.Get("current_user")
+	userModel, ok := currentUser.(*models.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get current user"})
+		return
+	}
 
 	// Validate password length
 	if len(password) < 6 {
-		c.HTML(http.StatusBadRequest, "pages/users/create.html", gin.H{
-			"Title":       "Create User - Sysara",
-			"Error":       "Password must be at least 6 characters long",
-			"Email":       email,
-			"Name":        name,
-			"CurrentUser": currentUser,
-		})
+		data := templ.UserCreateData{
+			AuthData: templ.AuthData{
+				Title:       "Create User - Sysara",
+				PageTitle:   "Create User",
+				CurrentUser: *userModel,
+			},
+			Error: "Password must be at least 6 characters long",
+			Email: email,
+			Name:  name,
+		}
+		c.Header("Content-Type", "text/html")
+		c.Status(http.StatusBadRequest)
+		templ.UserCreate(data).Render(c.Request.Context(), c.Writer)
 		return
 	}
 
 	_, err := h.authService.RegisterUser(email, name, password)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "pages/users/create.html", gin.H{
-			"Title":       "Create User - Sysara",
-			"Error":       err.Error(),
-			"Email":       email,
-			"Name":        name,
-			"CurrentUser": currentUser,
-		})
+		data := templ.UserCreateData{
+			AuthData: templ.AuthData{
+				Title:       "Create User - Sysara",
+				PageTitle:   "Create User",
+				CurrentUser: *userModel,
+			},
+			Error: err.Error(),
+			Email: email,
+			Name:  name,
+		}
+		c.Header("Content-Type", "text/html")
+		c.Status(http.StatusBadRequest)
+		templ.UserCreate(data).Render(c.Request.Context(), c.Writer)
 		return
 	}
 
@@ -215,12 +291,23 @@ func (h *UserHandler) ShowEditUser(c *gin.Context) {
 	}
 
 	currentUser, _ := c.Get("current_user")
+	userModel, ok := currentUser.(*models.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get current user"})
+		return
+	}
 
-	c.HTML(http.StatusOK, "pages/users/edit.html", gin.H{
-		"Title":       "Edit User - Sysara",
-		"User":        user,
-		"CurrentUser": currentUser,
-	})
+	data := templ.UserEditData{
+		AuthData: templ.AuthData{
+			Title:       "Edit User - Sysara",
+			PageTitle:   "Edit User",
+			CurrentUser: *userModel,
+		},
+		User: user,
+	}
+	c.Header("Content-Type", "text/html")
+	c.Status(http.StatusOK)
+	templ.UserEdit(data).Render(c.Request.Context(), c.Writer)
 }
 
 // UpdateUser handles user updates
@@ -242,43 +329,66 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 	password := c.PostForm("password")
 
 	currentUser, _ := c.Get("current_user")
-
-	// Update fields
-	user.Email = email
-	user.Name = name
+	userModel, ok := currentUser.(*models.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get current user"})
+		return
+	}
 
 	// Update password if provided
 	if password != "" {
 		if len(password) < 6 {
-			c.HTML(http.StatusBadRequest, "pages/users/edit.html", gin.H{
-				"Title":       "Edit User - Sysara",
-				"Error":       "Password must be at least 6 characters long",
-				"User":        user,
-				"CurrentUser": currentUser,
-			})
+			data := templ.UserEditData{
+				AuthData: templ.AuthData{
+					Title:       "Edit User - Sysara",
+					PageTitle:   "Edit User",
+					CurrentUser: *userModel,
+				},
+				User:  user,
+				Error: "Password must be at least 6 characters long",
+			}
+			c.Header("Content-Type", "text/html")
+			c.Status(http.StatusBadRequest)
+			templ.UserEdit(data).Render(c.Request.Context(), c.Writer)
 			return
 		}
 
 		hashedPassword, err := h.authService.HashPassword(password)
 		if err != nil {
-			c.HTML(http.StatusInternalServerError, "pages/users/edit.html", gin.H{
-				"Title":       "Edit User - Sysara",
-				"Error":       "Failed to hash password",
-				"User":        user,
-				"CurrentUser": currentUser,
-			})
+			data := templ.UserEditData{
+				AuthData: templ.AuthData{
+					Title:       "Edit User - Sysara",
+					PageTitle:   "Edit User",
+					CurrentUser: *userModel,
+				},
+				User:  user,
+				Error: "Failed to hash password",
+			}
+			c.Header("Content-Type", "text/html")
+			c.Status(http.StatusInternalServerError)
+			templ.UserEdit(data).Render(c.Request.Context(), c.Writer)
 			return
 		}
 		user.Password = hashedPassword
 	}
 
+	// Update fields
+	user.Email = email
+	user.Name = name
+
 	if err := h.db.Save(&user).Error; err != nil {
-		c.HTML(http.StatusInternalServerError, "pages/users/edit.html", gin.H{
-			"Title":       "Edit User - Sysara",
-			"Error":       "Failed to update user",
-			"User":        user,
-			"CurrentUser": currentUser,
-		})
+		data := templ.UserEditData{
+			AuthData: templ.AuthData{
+				Title:       "Edit User - Sysara",
+				PageTitle:   "Edit User",
+				CurrentUser: *userModel,
+			},
+			User:  user,
+			Error: "Failed to update user",
+		}
+		c.Header("Content-Type", "text/html")
+		c.Status(http.StatusInternalServerError)
+		templ.UserEdit(data).Render(c.Request.Context(), c.Writer)
 		return
 	}
 

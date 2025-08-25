@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/alpemreelmas/sysara/internal/models"
+	templ "github.com/alpemreelmas/sysara/templ"
 	"github.com/gin-gonic/gin"
 )
 
@@ -21,6 +23,11 @@ func NewEnvHandler() *EnvHandler {
 // ShowEnvFiles displays available environment files
 func (h *EnvHandler) ShowEnvFiles(c *gin.Context) {
 	currentUser, _ := c.Get("current_user")
+	userModel, ok := currentUser.(*models.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get current user"})
+		return
+	}
 
 	// Get list of .env files in the current directory
 	envFiles := []string{}
@@ -48,26 +55,43 @@ func (h *EnvHandler) ShowEnvFiles(c *gin.Context) {
 		}
 	}
 
-	c.HTML(http.StatusOK, "pages/env/list.html", gin.H{
-		"Title":       "Environment Files - Sysara",
-		"CurrentUser": currentUser,
-		"EnvFiles":    envFiles,
-	})
+	data := templ.EnvListData{
+		AuthData: templ.AuthData{
+			Title:       "Environment Files - Sysara",
+			PageTitle:   "Environment Files",
+			CurrentUser: *userModel,
+		},
+		EnvFiles: envFiles,
+	}
+	c.Header("Content-Type", "text/html")
+	c.Status(http.StatusOK)
+	templ.EnvList(data).Render(c.Request.Context(), c.Writer)
 }
 
 // ShowEditEnv displays the environment file editor
 func (h *EnvHandler) ShowEditEnv(c *gin.Context) {
 	filename := c.Param("filename")
 	currentUser, _ := c.Get("current_user")
+	userModel, ok := currentUser.(*models.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get current user"})
+		return
+	}
 
 	// Validate filename to prevent directory traversal
 	if !strings.HasPrefix(filename, ".env") {
-		c.HTML(http.StatusBadRequest, "pages/env/edit.html", gin.H{
-			"Title":       "Edit Environment - Sysara",
-			"CurrentUser": currentUser,
-			"Error":       "Invalid environment file name",
-			"Filename":    filename,
-		})
+		data := templ.EnvEditData{
+			AuthData: templ.AuthData{
+				Title:       "Edit Environment - Sysara",
+				PageTitle:   "Edit Environment",
+				CurrentUser: *userModel,
+			},
+			Filename: filename,
+			Error:    "Invalid environment file name",
+		}
+		c.Header("Content-Type", "text/html")
+		c.Status(http.StatusBadRequest)
+		templ.EnvEdit(data).Render(c.Request.Context(), c.Writer)
 		return
 	}
 
@@ -76,23 +100,35 @@ func (h *EnvHandler) ShowEditEnv(c *gin.Context) {
 	if _, err := os.Stat(filename); err == nil {
 		contentBytes, err := ioutil.ReadFile(filename)
 		if err != nil {
-			c.HTML(http.StatusInternalServerError, "pages/env/edit.html", gin.H{
-				"Title":       "Edit Environment - Sysara",
-				"CurrentUser": currentUser,
-				"Error":       "Failed to read environment file",
-				"Filename":    filename,
-			})
+			data := templ.EnvEditData{
+				AuthData: templ.AuthData{
+					Title:       "Edit Environment - Sysara",
+					PageTitle:   "Edit Environment",
+					CurrentUser: *userModel,
+				},
+				Filename: filename,
+				Error:    "Failed to read environment file",
+			}
+			c.Header("Content-Type", "text/html")
+			c.Status(http.StatusInternalServerError)
+			templ.EnvEdit(data).Render(c.Request.Context(), c.Writer)
 			return
 		}
 		content = string(contentBytes)
 	}
 
-	c.HTML(http.StatusOK, "pages/env/edit.html", gin.H{
-		"Title":       fmt.Sprintf("Edit %s - Sysara", filename),
-		"CurrentUser": currentUser,
-		"Filename":    filename,
-		"Content":     content,
-	})
+	data := templ.EnvEditData{
+		AuthData: templ.AuthData{
+			Title:       fmt.Sprintf("Edit %s - Sysara", filename),
+			PageTitle:   "Edit Environment",
+			CurrentUser: *userModel,
+		},
+		Filename: filename,
+		Content:  content,
+	}
+	c.Header("Content-Type", "text/html")
+	c.Status(http.StatusOK)
+	templ.EnvEdit(data).Render(c.Request.Context(), c.Writer)
 }
 
 // UpdateEnv saves changes to an environment file
@@ -100,16 +136,27 @@ func (h *EnvHandler) UpdateEnv(c *gin.Context) {
 	filename := c.Param("filename")
 	content := c.PostForm("content")
 	currentUser, _ := c.Get("current_user")
+	userModel, ok := currentUser.(*models.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get current user"})
+		return
+	}
 
 	// Validate filename to prevent directory traversal
 	if !strings.HasPrefix(filename, ".env") {
-		c.HTML(http.StatusBadRequest, "pages/env/edit.html", gin.H{
-			"Title":       "Edit Environment - Sysara",
-			"CurrentUser": currentUser,
-			"Error":       "Invalid environment file name",
-			"Filename":    filename,
-			"Content":     content,
-		})
+		data := templ.EnvEditData{
+			AuthData: templ.AuthData{
+				Title:       "Edit Environment - Sysara",
+				PageTitle:   "Edit Environment",
+				CurrentUser: *userModel,
+			},
+			Filename: filename,
+			Content:  content,
+			Error:    "Invalid environment file name",
+		}
+		c.Header("Content-Type", "text/html")
+		c.Status(http.StatusBadRequest)
+		templ.EnvEdit(data).Render(c.Request.Context(), c.Writer)
 		return
 	}
 
@@ -117,42 +164,59 @@ func (h *EnvHandler) UpdateEnv(c *gin.Context) {
 	if _, err := os.Stat(filename); err == nil {
 		backupName := fmt.Sprintf("%s.backup.%d", filename, os.Getpid())
 		if err := copyFile(filename, backupName); err != nil {
-			c.HTML(http.StatusInternalServerError, "pages/env/edit.html", gin.H{
-				"Title":       fmt.Sprintf("Edit %s - Sysara", filename),
-				"CurrentUser": currentUser,
-				"Error":       "Failed to create backup",
-				"Filename":    filename,
-				"Content":     content,
-			})
+			data := templ.EnvEditData{
+				AuthData: templ.AuthData{
+					Title:       fmt.Sprintf("Edit %s - Sysara", filename),
+					PageTitle:   "Edit Environment",
+					CurrentUser: *userModel,
+				},
+				Filename: filename,
+				Content:  content,
+				Error:    "Failed to create backup",
+			}
+			c.Header("Content-Type", "text/html")
+			c.Status(http.StatusInternalServerError)
+			templ.EnvEdit(data).Render(c.Request.Context(), c.Writer)
 			return
 		}
 	}
 
 	// Write new content
 	if err := ioutil.WriteFile(filename, []byte(content), 0644); err != nil {
-		c.HTML(http.StatusInternalServerError, "pages/env/edit.html", gin.H{
-			"Title":       fmt.Sprintf("Edit %s - Sysara", filename),
-			"CurrentUser": currentUser,
-			"Error":       "Failed to save environment file",
-			"Filename":    filename,
-			"Content":     content,
-		})
+		data := templ.EnvEditData{
+			AuthData: templ.AuthData{
+				Title:       fmt.Sprintf("Edit %s - Sysara", filename),
+				PageTitle:   "Edit Environment",
+				CurrentUser: *userModel,
+			},
+			Filename: filename,
+			Content:  content,
+			Error:    "Failed to save environment file",
+		}
+		c.Header("Content-Type", "text/html")
+		c.Status(http.StatusInternalServerError)
+		templ.EnvEdit(data).Render(c.Request.Context(), c.Writer)
 		return
 	}
 
-	c.HTML(http.StatusOK, "pages/env/edit.html", gin.H{
-		"Title":       fmt.Sprintf("Edit %s - Sysara", filename),
-		"CurrentUser": currentUser,
-		"Filename":    filename,
-		"Content":     content,
-		"Success":     "Environment file saved successfully",
-	})
+	data := templ.EnvEditData{
+		AuthData: templ.AuthData{
+			Title:       fmt.Sprintf("Edit %s - Sysara", filename),
+			PageTitle:   "Edit Environment",
+			CurrentUser: *userModel,
+		},
+		Filename: filename,
+		Content:  content,
+	}
+	c.Header("Content-Type", "text/html")
+	c.Status(http.StatusOK)
+	templ.EnvEdit(data).Render(c.Request.Context(), c.Writer)
 }
 
 // CreateEnvFile creates a new environment file
 func (h *EnvHandler) CreateEnvFile(c *gin.Context) {
 	filename := c.PostForm("filename")
-	
+
 	// Validate filename
 	if !strings.HasPrefix(filename, ".env") {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Environment file must start with .env"})

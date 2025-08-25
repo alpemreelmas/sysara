@@ -1,0 +1,100 @@
+package templ
+
+type BaseData struct {
+	Title string
+}
+
+templ Base(data BaseData) {
+	<!DOCTYPE html>
+	<html lang="en">
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<title>{ data.Title }</title>
+		<script src="https://cdn.tailwindcss.com"></script>
+		<script src="https://unpkg.com/htmx.org@1.9.6"></script>
+		<script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+		<link rel="stylesheet" href="/static/css/style.css"/>
+		<style>
+			/* Custom gradient background */
+			.bg-gradient-sysara {
+				background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+			}
+			.bg-card {
+				background: rgba(255, 255, 255, 0.95);
+				backdrop-filter: blur(10px);
+			}
+			/* Loading animation */
+			.htmx-indicator {
+				opacity: 0;
+				transition: opacity 0.3s ease-in-out;
+			}
+			.htmx-request .htmx-indicator {
+				opacity: 1;
+			}
+			.htmx-request.htmx-indicator {
+				opacity: 1;
+			}
+		</style>
+	</head>
+	<body class="bg-gray-50 min-h-screen">
+		{ children... }
+		
+		<!-- Loading indicator -->
+		<div id="loading-indicator" class="htmx-indicator fixed top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg z-50">
+			<i class="fas fa-spinner fa-spin mr-2"></i>
+			Loading...
+		</div>
+
+		<script>
+			// Global HTMX configuration
+			document.body.addEventListener('htmx:configRequest', function(evt) {
+				evt.detail.headers['X-Requested-With'] = 'XMLHttpRequest';
+			});
+
+			// Auto-refresh for monitoring pages
+			if (window.location.pathname === '/monitor') {
+				setInterval(function() {
+					htmx.trigger('#system-stats', 'refresh');
+					htmx.trigger('#process-list', 'refresh');
+				}, 5000); // Refresh every 5 seconds
+			}
+
+			// Notification system
+			function showNotification(message, type = 'info') {
+				const notification = document.createElement('div');
+				notification.className = `fixed top-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg z-50 ${
+					type === 'success' ? 'bg-green-500' : 
+					type === 'error' ? 'bg-red-500' : 
+					type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'
+				} text-white`;
+				notification.textContent = message;
+				document.body.appendChild(notification);
+				
+				setTimeout(() => {
+					notification.remove();
+				}, 3000);
+			}
+
+			// Format bytes for display
+			function formatBytes(bytes, decimals = 2) {
+				if (bytes === 0) return '0 Bytes';
+				const k = 1024;
+				const dm = decimals < 0 ? 0 : decimals;
+				const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+				const i = Math.floor(Math.log(bytes) / Math.log(k));
+				return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+			}
+
+			// Format uptime
+			function formatUptime(seconds) {
+				const days = Math.floor(seconds / 86400);
+				const hours = Math.floor((seconds % 86400) / 3600);
+				const minutes = Math.floor((seconds % 3600) / 60);
+				return `${days}d ${hours}h ${minutes}m`;
+			}
+		</script>
+	</body>
+	</html>
+}
