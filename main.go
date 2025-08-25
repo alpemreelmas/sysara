@@ -20,6 +20,14 @@ func main() {
 
 	// Initialize session store
 	store := sessions.NewCookieStore([]byte("sysara-secret-key-change-in-production"))
+	// Configure session options
+	store.Options = &sessions.Options{
+		Path:     "/",
+		MaxAge:   86400 * 7, // 7 days
+		HttpOnly: true,
+		Secure:   false, // Set to true in production with HTTPS
+		SameSite: http.SameSiteLaxMode,
+	}
 
 	// Initialize auth service
 	authService := auth.NewAuthService(db, store)

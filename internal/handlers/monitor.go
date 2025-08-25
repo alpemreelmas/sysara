@@ -115,7 +115,12 @@ func (h *MonitorHandler) collectSystemStats() (*templ.SystemStats, error) {
 	}
 
 	// Disk stats (root partition)
-	diskStats, err := disk.Usage("/")
+	// Use C:\ for Windows, / for Unix-like systems
+	diskPath := "/"
+	if runtime.GOOS == "windows" {
+		diskPath = "C:\\"
+	}
+	diskStats, err := disk.Usage(diskPath)
 	if err == nil {
 		stats.Disk.Total = diskStats.Total
 		stats.Disk.Free = diskStats.Free

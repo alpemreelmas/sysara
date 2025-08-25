@@ -3,6 +3,7 @@ package templ
 import (
 	"fmt"
 	"strconv"
+	"github.com/alpemreelmas/sysara/internal/utils"
 )
 
 // SystemStats represents system statistics
@@ -231,8 +232,7 @@ templ SystemStatsPartial(data SystemStatsData) {
 							<div class="bg-green-500 h-2 rounded-full" style={ "width: " + fmt.Sprintf("%.1f", data.Stats.Memory.UsedPercent) + "%" }></div>
 						</div>
 						<span class="ml-2 text-xs text-gray-500">
-							<script>document.write(formatBytes({ strconv.FormatUint(data.Stats.Memory.Used, 10) }));</script> / 
-							<script>document.write(formatBytes({ strconv.FormatUint(data.Stats.Memory.Total, 10) }));</script>
+							{ utils.FormatBytes(data.Stats.Memory.Used) } / { utils.FormatBytes(data.Stats.Memory.Total) }
 						</span>
 					</div>
 				</div>
@@ -261,8 +261,7 @@ templ SystemStatsPartial(data SystemStatsData) {
 							<div class="bg-yellow-500 h-2 rounded-full" style={ "width: " + fmt.Sprintf("%.1f", data.Stats.Disk.UsedPercent) + "%" }></div>
 						</div>
 						<span class="ml-2 text-xs text-gray-500">
-							<script>document.write(formatBytes({ strconv.FormatUint(data.Stats.Disk.Used, 10) }));</script> / 
-							<script>document.write(formatBytes({ strconv.FormatUint(data.Stats.Disk.Total, 10) }));</script>
+							{ utils.FormatBytes(data.Stats.Disk.Used) } / { utils.FormatBytes(data.Stats.Disk.Total) }
 						</span>
 					</div>
 				</div>
@@ -289,11 +288,11 @@ templ SystemStatsPartial(data SystemStatsData) {
 					<div class="text-xs text-gray-500 space-y-1">
 						<div>
 							<i class="fas fa-arrow-up text-green-500 mr-1"></i>
-							<script>document.write(formatBytes({ strconv.FormatUint(data.Stats.Network.BytesSent, 10) }));</script>
+							{ utils.FormatBytes(data.Stats.Network.BytesSent) }
 						</div>
 						<div>
 							<i class="fas fa-arrow-down text-blue-500 mr-1"></i>
-							<script>document.write(formatBytes({ strconv.FormatUint(data.Stats.Network.BytesRecv, 10) }));</script>
+							{ utils.FormatBytes(data.Stats.Network.BytesRecv) }
 						</div>
 					</div>
 				</div>
@@ -320,18 +319,12 @@ templ SystemStatsPartial(data SystemStatsData) {
 			<div>
 				<span class="font-medium text-gray-600">Uptime:</span>
 				<span class="text-gray-900">
-					<script>document.write(formatUptime({ strconv.FormatUint(data.Stats.Host.Uptime, 10) }));</script>
+					{ utils.FormatUptime(data.Stats.Host.Uptime) }
 				</span>
 			</div>
 			<div>
 				<span class="font-medium text-gray-600">CPU Model:</span>
 				<span class="text-gray-900">{ data.Stats.CPU.ModelName }</span>
-			</div>
-			<div class="timestamp">
-				<span class="font-medium text-gray-600">Last updated:</span>
-				<span class="text-gray-900">
-					<script>document.write(new Date().toLocaleTimeString());</script>
-				</span>
 			</div>
 		</div>
 	</div>
@@ -383,10 +376,10 @@ templ ProcessListPartial(data ProcessListData) {
 								{ fmt.Sprintf("%.1f", process.CPUPercent) }%
 							</td>
 							<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-								<script>document.write(formatBytes({ strconv.FormatUint(process.Memory, 10) }));</script>
+								{ utils.FormatBytes(process.Memory) }
 							</td>
 							<td class="px-6 py-4 whitespace-nowrap">
-								<span class={ "inline-flex px-2 py-1 text-xs font-semibold rounded-full " + getStatusClass(process.Status) }>
+								<span class={ "inline-flex px-2 py-1 text-xs font-semibold rounded-full " + utils.GetStatusClass(process.Status) }>
 									{ process.Status }
 								</span>
 							</td>
@@ -407,19 +400,5 @@ templ ProcessListPartial(data ProcessListData) {
 		<div>
 			Showing top { strconv.Itoa(len(data.Processes)) } processes
 		</div>
-		<div class="timestamp">
-			Last updated: <script>document.write(new Date().toLocaleTimeString());</script>
-		</div>
 	</div>
-}
-
-func getStatusClass(status string) string {
-	switch status {
-	case "running":
-		return "bg-green-100 text-green-800"
-	case "sleeping":
-		return "bg-yellow-100 text-yellow-800"
-	default:
-		return "bg-gray-100 text-gray-800"
-	}
 }
