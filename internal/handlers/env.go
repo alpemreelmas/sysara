@@ -31,7 +31,7 @@ func (h *EnvHandler) ShowEnvFiles(c *gin.Context) {
 
 	// Get list of .env files in the current directory
 	envFiles := []string{}
-	files, err := ioutil.ReadDir(".")
+	files, err := os.ReadDir(".")
 	if err == nil {
 		for _, file := range files {
 			if strings.HasPrefix(file.Name(), ".env") {
@@ -41,19 +41,19 @@ func (h *EnvHandler) ShowEnvFiles(c *gin.Context) {
 	}
 
 	// Add common env files if they don't exist
-	commonEnvFiles := []string{".env", ".env.production", ".env.testing", ".env.development"}
-	for _, envFile := range commonEnvFiles {
-		found := false
-		for _, existing := range envFiles {
-			if existing == envFile {
-				found = true
-				break
-			}
-		}
-		if !found {
-			envFiles = append(envFiles, envFile)
-		}
-	}
+	//commonEnvFiles := []string{".env", ".env.production", ".env.testing", ".env.development"}
+	//for _, envFile := range commonEnvFiles {
+	//	found := false
+	//	for _, existing := range envFiles {
+	//		if existing == envFile {
+	//			found = true
+	//			break
+	//		}
+	//	}
+	//	if !found {
+	//		envFiles = append(envFiles, envFile)
+	//	}
+	//}
 
 	data := templ.EnvListData{
 		AuthData: templ.AuthData{

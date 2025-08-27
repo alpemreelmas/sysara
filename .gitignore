@@ -46,3 +46,9 @@ pkg/
 # Environment files
 .env
 .env.*
+
+# AI IDE
+.qoder
+.idea
+.cursor
+.kiro

@@ -1,6 +1,7 @@
 package models
 
 import (
+	"golang.org/x/crypto/bcrypt"
 	"time"
 
 	"gorm.io/driver/sqlite"
@@ -46,7 +47,7 @@ type Server struct {
 // InitDB initializes the database connection and runs migrations
 func InitDB() (*gorm.DB, error) {
 	var err error
-	
+
 	// Connect to SQLite database
 	DB, err = gorm.Open(sqlite.Open("data/sysara.db"), &gorm.Config{})
 	if err != nil {
@@ -63,8 +64,17 @@ func InitDB() (*gorm.DB, error) {
 	var userCount int64
 	DB.Model(&User{}).Count(&userCount)
 	if userCount == 0 {
-		// This will be handled by the auth service to hash the password properly
-		// For now, we'll let the registration process handle user creation
+		hashedPassword, _ := bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
+
+		admin := User{
+			Email:    "admin@admin",
+			Name:     "Administrator",
+			Password: string(hashedPassword),
+		}
+
+		if err := DB.Create(&admin).Error; err != nil {
+			return nil, err
+		}
 	}
 
 	return DB, nil
