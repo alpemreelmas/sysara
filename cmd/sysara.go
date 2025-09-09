@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/gob"
 	"github.com/alpemreelmas/sysara/internal/auth"
 	"github.com/alpemreelmas/sysara/internal/handlers"
 	"github.com/alpemreelmas/sysara/internal/middleware"
@@ -12,6 +13,9 @@ import (
 )
 
 func main() {
+	// Register types for gob encoding (needed for session storage)
+	gob.Register(middleware.FlashMessage{})
+
 	// Initialize database
 	db, err := models.InitDB()
 	if err != nil {
@@ -50,6 +54,7 @@ func main() {
 	// Note: No longer loading HTML templates - using templ instead
 	// Middleware
 	r.Use(middleware.SessionMiddleware(store))
+	r.Use(middleware.FlashMiddleware())
 	r.Use(middleware.CORSMiddleware())
 
 	// Public routes

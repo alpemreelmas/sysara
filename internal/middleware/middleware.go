@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/alpemreelmas/sysara/internal/auth"
@@ -77,4 +78,79 @@ func SecurityHeadersMiddleware() gin.HandlerFunc {
 		c.Writer.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		c.Next()
 	})
+}
+
+// FlashMessage represents a flash message
+type FlashMessage struct {
+	Type    string `json:"type"`    // success, error, warning, info
+	Message string `json:"message"`
+}
+
+// FlashMiddleware handles flash messages
+func FlashMiddleware() gin.HandlerFunc {
+	return gin.HandlerFunc(func(c *gin.Context) {
+		// Get session store from context
+		store, exists := c.Get("session_store")
+		if !exists {
+			c.Next()
+			return
+		}
+
+		sessionStore := store.(sessions.Store)
+		session, err := sessionStore.Get(c.Request, "flash-session")
+		if err != nil {
+			c.Next()
+			return
+		}
+
+		// Get flash messages from session
+		var flashMessages []FlashMessage
+		if flashes := session.Flashes(); len(flashes) > 0 {
+			log.Printf("Found %d flash messages", len(flashes))
+			for _, flash := range flashes {
+				if flashMsg, ok := flash.(FlashMessage); ok {
+					flashMessages = append(flashMessages, flashMsg)
+					log.Printf("Retrieved flash: type=%s, message=%s", flashMsg.Type, flashMsg.Message)
+				}
+			}
+			// Save session to clear flashes
+			session.Save(c.Request, c.Writer)
+		}
+
+		// Add flash messages to context
+		c.Set("flash_messages", flashMessages)
+		log.Printf("Set %d flash messages in context", len(flashMessages))
+		c.Next()
+	})
+}
+
+// SetFlash adds a flash message to the session
+func SetFlash(c *gin.Context, msgType, message string) {
+	log.Printf("Setting flash message: type=%s, message=%s", msgType, message)
+	
+	store, exists := c.Get("session_store")
+	if !exists {
+		log.Println("Session store not found in context")
+		return
+	}
+
+	sessionStore := store.(sessions.Store)
+	session, err := sessionStore.Get(c.Request, "flash-session")
+	if err != nil {
+		log.Printf("Error getting session: %v", err)
+		return
+	}
+
+	flash := FlashMessage{
+		Type:    msgType,
+		Message: message,
+	}
+
+	session.AddFlash(flash)
+	err = session.Save(c.Request, c.Writer)
+	if err != nil {
+		log.Printf("Error saving session: %v", err)
+	} else {
+		log.Println("Flash message saved successfully")
+	}
 }
