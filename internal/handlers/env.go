@@ -2,13 +2,12 @@ package handlers
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
 
-	"github.com/alpemreelmas/sysara/internal/middleware"
 	"github.com/alpemreelmas/sysara/internal/models"
+	"github.com/alpemreelmas/sysara/pkg/flash"
 	templ "github.com/alpemreelmas/sysara/templ"
 	"github.com/gin-gonic/gin"
 )
@@ -30,19 +29,6 @@ func (h *EnvHandler) ShowEnvFiles(c *gin.Context) {
 		return
 	}
 
-	// Get flash messages from context
-	flashMessages := []templ.FlashMessage{}
-	if messages, exists := c.Get("flash_messages"); exists {
-		if msgs, ok := messages.([]middleware.FlashMessage); ok {
-			for _, msg := range msgs {
-				flashMessages = append(flashMessages, templ.FlashMessage{
-					Type:    msg.Type,
-					Message: msg.Message,
-				})
-			}
-		}
-	}
-
 	// Get list of .env files in the current directory
 	envFiles := []string{}
 	files, err := os.ReadDir(".")
@@ -61,7 +47,7 @@ func (h *EnvHandler) ShowEnvFiles(c *gin.Context) {
 			CurrentUser: *userModel,
 		},
 		EnvFiles:      envFiles,
-		FlashMessages: flashMessages,
+		FlashMessages: flash.MustGetFlashes(c),
 	}
 	c.Header("Content-Type", "text/html")
 	c.Status(http.StatusOK)
@@ -71,25 +57,7 @@ func (h *EnvHandler) ShowEnvFiles(c *gin.Context) {
 // ShowEditEnv displays the environment file editor
 func (h *EnvHandler) ShowEditEnv(c *gin.Context) {
 	filename := c.Param("filename")
-	currentUser, _ := c.Get("current_user")
-	userModel, ok := currentUser.(*models.User)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get current user"})
-		return
-	}
-
-	// Get flash messages from context
-	flashMessages := []templ.FlashMessage{}
-	if messages, exists := c.Get("flash_messages"); exists {
-		if msgs, ok := messages.([]middleware.FlashMessage); ok {
-			for _, msg := range msgs {
-				flashMessages = append(flashMessages, templ.FlashMessage{
-					Type:    msg.Type,
-					Message: msg.Message,
-				})
-			}
-		}
-	}
+	currentUser := c.MustGet("current_user").(*models.User)
 
 	// Validate filename to prevent directory traversal
 	if !strings.HasPrefix(filename, ".env") {
@@ -97,14 +65,14 @@ func (h *EnvHandler) ShowEditEnv(c *gin.Context) {
 			AuthData: templ.AuthData{
 				Title:       "Edit Environment - Sysara",
 				PageTitle:   "Edit Environment",
-				CurrentUser: *userModel,
+				CurrentUser: *currentUser,
 			},
 			Filename:      filename,
-			Error:         "Invalid environment file name",
-			FlashMessages: flashMessages,
+			FlashMessages: flash.MustGetFlashes(c),
 		}
 		c.Header("Content-Type", "text/html")
 		c.Status(http.StatusBadRequest)
+		flash.Add(c, "error", "Invalid environment file name")
 		templ.EnvEdit(data).Render(c.Request.Context(), c.Writer)
 		return
 	}
@@ -112,20 +80,20 @@ func (h *EnvHandler) ShowEditEnv(c *gin.Context) {
 	// Read file content
 	content := ""
 	if _, err := os.Stat(filename); err == nil {
-		contentBytes, err := ioutil.ReadFile(filename)
+		contentBytes, err := os.ReadFile(filename)
 		if err != nil {
 			data := templ.EnvEditData{
 				AuthData: templ.AuthData{
 					Title:       "Edit Environment - Sysara",
 					PageTitle:   "Edit Environment",
-					CurrentUser: *userModel,
+					CurrentUser: *currentUser,
 				},
 				Filename:      filename,
-				Error:         "Failed to read environment file",
-				FlashMessages: flashMessages,
+				FlashMessages: flash.MustGetFlashes(c),
 			}
 			c.Header("Content-Type", "text/html")
 			c.Status(http.StatusInternalServerError)
+			flash.Add(c, "error", "Failed to read file")
 			templ.EnvEdit(data).Render(c.Request.Context(), c.Writer)
 			return
 		}
@@ -136,11 +104,11 @@ func (h *EnvHandler) ShowEditEnv(c *gin.Context) {
 		AuthData: templ.AuthData{
 			Title:       fmt.Sprintf("Edit %s - Sysara", filename),
 			PageTitle:   "Edit Environment",
-			CurrentUser: *userModel,
+			CurrentUser: *currentUser,
 		},
 		Filename:      filename,
 		Content:       content,
-		FlashMessages: flashMessages,
+		FlashMessages: flash.MustGetFlashes(c),
 	}
 	c.Header("Content-Type", "text/html")
 	c.Status(http.StatusOK)
@@ -154,81 +122,61 @@ func (h *EnvHandler) UpdateEnv(c *gin.Context) {
 
 	// Validate filename to prevent directory traversal
 	if !strings.HasPrefix(filename, ".env") {
-		middleware.SetFlash(c, "error", "Invalid environment file name")
+		flash.Add(c, "error", "Invalid environment file name")
 		c.Redirect(http.StatusSeeOther, "/env")
 		return
 	}
 
-	// Create backup of existing file
-	if _, err := os.Stat(filename); err == nil {
-		backupName := fmt.Sprintf("%s.backup.%d", filename, os.Getpid())
-		if err := copyFile(filename, backupName); err != nil {
-			middleware.SetFlash(c, "error", "Failed to create backup")
-			c.Redirect(http.StatusSeeOther, fmt.Sprintf("/env/edit/%s", filename))
-			return
-		}
-	}
-
 	// Write new content
-	if err := ioutil.WriteFile(filename, []byte(content), 0644); err != nil {
-		middleware.SetFlash(c, "error", "Failed to save environment file")
+	if err := os.WriteFile(filename, []byte(content), 0644); err != nil {
+		flash.Add(c, "error", "Failed to save environment file")
 		c.Redirect(http.StatusSeeOther, fmt.Sprintf("/env/edit/%s", filename))
 		return
 	}
 
 	// Success message
-	middleware.SetFlash(c, "success", fmt.Sprintf("Environment file '%s' saved successfully", filename))
+	flash.Add(c, "success", fmt.Sprintf("Environment file '%s' saved successfully", filename))
 	c.Redirect(http.StatusSeeOther, fmt.Sprintf("/env/edit/%s", filename))
 }
 
 // CreateEnvFile creates a new environment file
 func (h *EnvHandler) CreateEnvFile(c *gin.Context) {
 	filename := c.PostForm("filename")
-	fmt.Printf("CreateEnvFile called with filename: '%s'\n", filename)
 
 	// Validate filename
 	if filename == "" {
-		middleware.SetFlash(c, "error", "Filename cannot be empty")
+		flash.Add(c, "error", "Filename cannot be empty")
 		c.Redirect(http.StatusSeeOther, "/env")
 		return
 	}
 
 	if !strings.HasPrefix(filename, ".env") {
-		middleware.SetFlash(c, "error", "Environment file must start with .env")
+		flash.Add(c, "error", "Environment file must start with .env")
 		c.Redirect(http.StatusSeeOther, "/env")
 		return
 	}
 
 	// Additional validation for filename
 	if strings.Contains(filename, "/") || strings.Contains(filename, "\\") {
-		middleware.SetFlash(c, "error", "Invalid filename: cannot contain path separators")
+		flash.Add(c, "error", "Invalid filename: cannot contain path separators")
 		c.Redirect(http.StatusSeeOther, "/env")
 		return
 	}
 
 	// Check if file already exists
 	if _, err := os.Stat(filename); err == nil {
-		middleware.SetFlash(c, "warning", fmt.Sprintf("File '%s' already exists", filename))
+		flash.Add(c, "warning", fmt.Sprintf("File '%s' already exists", filename))
 		c.Redirect(http.StatusSeeOther, "/env")
 		return
 	}
 
 	if err := os.WriteFile(filename, []byte(""), 0644); err != nil {
-		middleware.SetFlash(c, "error", "Failed to create file: "+err.Error())
+		flash.Add(c, "error", "Failed to create file: "+err.Error())
 		c.Redirect(http.StatusSeeOther, "/env")
 		return
 	}
 
 	// Success message
-	middleware.SetFlash(c, "success", fmt.Sprintf("Environment file '%s' created successfully", filename))
+	flash.Add(c, "success", fmt.Sprintf("Environment file '%s' created successfully", filename))
 	c.Redirect(http.StatusSeeOther, "/env")
-}
-
-// Helper function to copy files
-func copyFile(src, dst string) error {
-	data, err := ioutil.ReadFile(src)
-	if err != nil {
-		return err
-	}
-	return ioutil.WriteFile(dst, data, 0644)
 }

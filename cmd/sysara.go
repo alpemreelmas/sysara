@@ -6,15 +6,19 @@ import (
 	"github.com/alpemreelmas/sysara/internal/handlers"
 	"github.com/alpemreelmas/sysara/internal/middleware"
 	"github.com/alpemreelmas/sysara/internal/models"
+	"github.com/alpemreelmas/sysara/pkg/flash"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/sessions"
+
 	"log"
 	"net/http"
 )
 
 func main() {
 	// Register types for gob encoding (needed for session storage)
-	gob.Register(middleware.FlashMessage{})
+	gob.Register(flash.Flash{})
+	gob.Register([]flash.Flash{})
 
 	// Initialize database
 	db, err := models.InitDB()
@@ -22,16 +26,7 @@ func main() {
 		log.Fatal("Failed to connect to database:", err)
 	}
 
-	// Initialize session store
-	store := sessions.NewCookieStore([]byte("sysara-secret-key-change-in-production"))
-	// Configure session options
-	store.Options = &sessions.Options{
-		Path:     "/",
-		MaxAge:   86400 * 7, // 7 days
-		HttpOnly: true,
-		Secure:   false, // Set to true in production with HTTPS
-		SameSite: http.SameSiteLaxMode,
-	}
+	store := cookie.NewStore([]byte("secret"))
 
 	// Initialize auth service
 	authService := auth.NewAuthService(db, store)
@@ -53,9 +48,10 @@ func main() {
 	r.Static("/static", "./static")
 	// Note: No longer loading HTML templates - using templ instead
 	// Middleware
+	r.Use(sessions.Sessions("flashes", store))
 	r.Use(middleware.SessionMiddleware(store))
-	r.Use(middleware.FlashMiddleware())
 	r.Use(middleware.CORSMiddleware())
+	r.Use(middleware.LoadFlashes())
 
 	// Public routes
 	public := r.Group("/")
